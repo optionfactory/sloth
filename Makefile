@@ -11,7 +11,13 @@ build-release:
 run:
 	cargo run
 
-publish-github: build-release
+# the release is tagged on the commit GitHub has: only a clean tree, with master pushed
+pushed:
+	@git diff --quiet HEAD || { echo "uncommitted changes: commit them first"; exit 1; }
+	@git fetch -q origin master
+	@[ "$$(git rev-parse HEAD)" = "$$(git rev-parse origin/master)" ] || { echo "master is not pushed: push it first"; exit 1; }
+
+publish-github: pushed build-release
 	$(eval version=$(shell cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].version'))
 	$(eval github_token=$(shell echo url=https://github.com/$(REPO_OWNER)/$(REPO_NAME) | git credential fill | grep '^password=' | sed 's/password=//'))
 	$(eval release_id=$(shell curl -s -X POST \
